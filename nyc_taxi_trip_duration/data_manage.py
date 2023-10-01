@@ -1,15 +1,8 @@
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+# from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.compose import make_column_transformer
-
 
 # load_dataset():
 """
@@ -18,7 +11,8 @@ TAKES ==> path to the datasets, train dataset name, and validation dataset name
 RETURNS ==> train dataset (X), val dataset (y)
 """
 
-def load_dataset(root='', path='datasets/split/', train_dataset='train.csv', val_dataset='val.csv'):
+
+def load_dataset(root='', path='nyc_taxi_trip_duration/split/', train_dataset='train.csv', val_dataset='val.csv'):
     # root = '../'
     X = pd.read_csv(root + path + train_dataset)
     y = pd.read_csv(root + path + val_dataset)
@@ -31,28 +25,28 @@ def load_dataset(root='', path='datasets/split/', train_dataset='train.csv', val
 if apply manually splitting: (X) is train dataset, 
     (y) is val dataset
 
-TAKES ==> train dataset (X), val dataset (y), train_test_split -bool-, to_numpy() -bool-
-RETURNS ==> 
 """
+
+
 def split_data(X, y, toNumpy=False):
     # split the data manually, and this is the suitable way for our data
 
     X_train = X.iloc[:, :-1]
     y_train = X.iloc[:, -1]
 
-    X_val = y.iloc[:, :-1]
-    y_val = y.iloc[:, -1]
+    X_test = y.iloc[:, :-1]
+    y_test = y.iloc[:, -1]
+    print(f'here: type of dataset {type(X_train)}')
 
     if toNumpy:
         X_train = X_train.to_numpy()
-        y_train = y_train.to_numpy()
+        y_train = y_train.to_numpy().reshape(-1, 1)
 
-        X_val = X_val.to_numpy()
-        y_val = y_val.to_numpy()
-
-    # train input data (X_train), val input data (X_val)
-    # train target value (y_train), val target value (y_val)
-    return X_train, X_val, y_train, y_val
+        X_test = X_test.to_numpy()
+        y_test = y_test.to_numpy().reshape(-1, 1)
+    # train input data (X_train), train target value (y_train)
+    # val input data (X_val), val target value (y_val)
+    return X_train, y_train, X_test, y_test
 
 def cols_to_drop(X, y, cols, is_series=False):
     if is_series:
@@ -91,10 +85,13 @@ def cat_cols_to_encode(X, y):
 TAKES ==> Pandas DataFrame of train Input Data
 RETURNS ==> numerical columns in the DataFrame
 """
+
+
 def get_numeric_col(df):
     df_num = df.select_dtypes(include=['float32', 'float64', 'int32', 'int64'])
 
     return df_num
+
 
 def obj_to_datetime(X, y):
     X['pickup_datetime'] = pd.to_datetime(X['pickup_datetime'], format='%Y-%m-%d %H:%M:%S')
@@ -120,6 +117,8 @@ TAKES ==> train Input Data (X_train), val Input Data (X_val)
 RETURNS ==> encoded data with the applied encoder (encoded) -array or list (idk)- 
             (Transformed array) in the documentation 
 """
+
+
 def encode_data(features, is_series=False, encoder=OneHotEncoder()):
     # transformer = make_column_transformer((OneHotEncoder(), columns),
     #                                       remainder='passthrough')
@@ -134,19 +133,96 @@ def encode_data(features, is_series=False, encoder=OneHotEncoder()):
     return encoded
 
 
-def concat_encoded_cols(df, features_names, transformed, categories):
-    df = df.loc[:, ~df.columns.isin([features_names])]
+def encode_(X, y, cols):
+    # OHE = OneHotEncoder(sparse_output=False)
+    OHE = OneHotEncoder(handle_unknown='ignore')
+    # if not isinstance(cols, list):
+    #     cols = [cols]
 
-    n_cat_feats = 0
-    for cat in categories:
-        for cat_transformed_feature_name, idx in zip(cat, range(n_cat_feats, n_cat_feats+len(cat))):
-            df[cat_transformed_feature_name] = transformed[:, idx]
-            # print(f'categorical feature of categories: {cat_transformed_feature_name}')
-            # print(f'value of x: {idx}')
+    # print(f'1- uu- {X.shape}')
+    # print(f'1- yy- {y.shape}')
 
-        n_cat_feats = n_cat_feats + len(cat)
+    enc_X = X[cols].to_numpy().reshape(-1, 1)
+    enc_y = y[cols].to_numpy().reshape(-1, 1)
 
-    return df
+    # print(f'2- uu- {enc_X.shape}')
+    # print(f'2- yy- {enc_y.shape}')
+    enc_X = OHE.fit_transform(enc_X).toarray()
+    enc_y = OHE.transform(enc_y).toarray()
+
+    cols_names = OHE.get_feature_names_out([cols])
+    print(f'feat uu- {cols_names}')
+    # print(f'feat yy- {enc_y.get_feature_names_out([cols])}')
+
+    # print(f'3- uu- {X.shape}')
+    # print(f'3- yy- {y.shape}')
+    #
+    # print(f'3- enc_uu- {enc_X.shape}')
+    # print(f'3- enc_yy- {enc_y.shape}')
+    #
+    # print(f'3- enc_uu- {type(enc_X)}')
+    # print(f'3- enc_yy- {type(enc_y)}')
+
+    df_x = pd.DataFrame(enc_X,
+                        columns=cols_names)
+    df_y = pd.DataFrame(enc_y,
+                        columns=cols_names)
+
+    X = pd.concat([X.drop(cols, axis=1), df_x], axis=1)
+    y = pd.concat([y.drop(cols, axis=1), df_y], axis=1)
+
+    print(f'encode_ done')
+    return X, y
+
+
+def extract_datetime(X_train, X_test, date):
+    # print(f'is it datetime: {type(X_train[date])}')
+    X_train['pickup_datetime'] = pd.to_datetime(X_train['pickup_datetime'])
+    X_test['pickup_datetime'] = pd.to_datetime(X_test['pickup_datetime'])
+    # print(f'is it datetime: {type(X_train[date])}')
+    #
+    # X_train['pickup_datetime'] = pd.to_datetime(X_train['pickup_datetime'], format='%Y-%m-%d %H:%M:%S')
+    # print(f'is it datetime: {type(X_train[date])}')
+
+    # X = pd.to_datetime(X_train['pickup_datetime']).to_datetime64()
+    # print(f'X is it datetime: {type(X)}')
+
+    print(X_train.info())
+
+    X_train[date+':year'] = X_train[date].dt.year
+    X_train[date+':month'] = X_train[date].dt.month
+    X_train[date+':day'] = X_train[date].dt.day
+    X_train[date+':hour'] = X_train[date].dt.hour
+    X_train[date+':minute'] = X_train[date].dt.minute
+    X_train[date+':second'] = X_train[date].dt.second
+
+    X_test[date+':year'] = X_test[date].dt.year
+    X_test[date+':month'] = X_test[date].dt.month
+    X_test[date+':day'] = X_test[date].dt.day
+    X_test[date+':hour'] = X_test[date].dt.hour
+    X_test[date+':minute'] = X_test[date].dt.minute
+    X_test[date+':second'] = X_test[date].dt.second
+
+    X_train = X_train.drop(date, axis=1)
+    X_test = X_test.drop(date, axis=1)
+    # print(f'in for loop: {type(d)}')
+
+    return X_train, X_test
+
+# def concat_encoded_cols(df, features_names, transformed, categories):
+#     df = df.loc[:, ~df.columns.isin([features_names])]
+#
+#     n_cat_feats = 0
+#     for cat in categories:
+#         for cat_transformed_feature_name, idx in zip(cat, range(n_cat_feats, n_cat_feats+len(cat))):
+#             df[cat_transformed_feature_name] = transformed[:, idx]
+#             # print(f'categorical feature of categories: {cat_transformed_feature_name}')
+#             # print(f'value of x: {idx}')
+#
+#         n_cat_feats = n_cat_feats + len(cat)
+#
+#     return df
+
 
 def datasets_to_numpy_array(X_train, X_val, y_train, y_val):
     X_train = X_train.to_numpy()
@@ -155,6 +231,7 @@ def datasets_to_numpy_array(X_train, X_val, y_train, y_val):
     y_val = y_val.to_numpy()
 
     return X_train, X_val, y_train, y_val
+
 
 def cats_to_numpy_array(cat_cols):
     cat_cols = cat_cols.to_numpy()
@@ -168,15 +245,23 @@ TAKES ==> train Input Data (X_train), val Input Data (X_val), chosen scaler (sca
 RETURNS ==> scaled train Input Data with the applied scaler (X_train)
             scaled val Input Data with the applied scaler (X_val)
 """
-def scale_data(X_train, X_val, y_train, y_val, scaler=MinMaxScaler()):
-    processor = scaler
+
+
+def scale_data(X_train, X_test, processor=MinMaxScaler()):
+    """
+    MISTAKES I MADE IN THIS CODE
+    processor = MinMaxScaler()
+    1- i used processor to fit_transform(t_train), we dont transform or fit_transform the target data
+    2- i used processor to fit_transform(X_val), must be transform(X_val)
+        REASON:
+        i fitted the transformer and transformed the data on the train data, and i want to see if the scaler works well on
+        the train data, so it must directly transform the val data on the fitted train data
+    3- i used processor to fit_transform(t_val), we dont transform or fit_transform the target data
+    """
+
     X_train = processor.fit_transform(X_train)
-    y_train = y_train.reshape(-1, 1)
-    y_train = processor.fit_transform(y_train)
 
     # in the X_val we used transform not fit_transform
-    X_val = processor.fit_transform(X_val)
-    y_val = y_val.reshape(-1, 1)
-    y_val = processor.fit_transform(y_val)
+    X_test = processor.transform(X_test)
 
-    return X_train, X_val, y_train, y_val
+    return X_train, X_test
