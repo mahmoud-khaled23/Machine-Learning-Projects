@@ -12,8 +12,8 @@ RETURNS ==> train dataset (X), val dataset (y)
 """
 
 
-def load_dataset(root='', path='nyc_taxi_trip_duration/split/', train_dataset='train.csv', val_dataset='val.csv'):
-    # root = '../'
+def load_dataset(root='', path='datasets/split/', train_dataset='train.csv', val_dataset='val.csv'):
+    root = '../'
     X = pd.read_csv(root + path + train_dataset)
     y = pd.read_csv(root + path + val_dataset)
 
@@ -191,6 +191,7 @@ def extract_datetime(X_train, X_test, date):
 
     X_train[date+':year'] = X_train[date].dt.year
     X_train[date+':month'] = X_train[date].dt.month
+    X_train[date+':weekday'] = X_train[date].dt.weekday
     X_train[date+':day'] = X_train[date].dt.day
     X_train[date+':hour'] = X_train[date].dt.hour
     X_train[date+':minute'] = X_train[date].dt.minute
@@ -198,6 +199,7 @@ def extract_datetime(X_train, X_test, date):
 
     X_test[date+':year'] = X_test[date].dt.year
     X_test[date+':month'] = X_test[date].dt.month
+    X_test[date+':weekday'] = X_test[date].dt.weekday
     X_test[date+':day'] = X_test[date].dt.day
     X_test[date+':hour'] = X_test[date].dt.hour
     X_test[date+':minute'] = X_test[date].dt.minute

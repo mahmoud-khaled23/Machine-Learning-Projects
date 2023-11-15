@@ -1,4 +1,4 @@
-from data_manage import *
+from nyc_taxi_trip_duration.data_manage import *
 import yaml
 
 import numpy as np
