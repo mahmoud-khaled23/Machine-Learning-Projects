@@ -4,3 +4,7 @@
 **/.ipynb_checkpoints
 
 **/__pycache__/
+
+requirements.txt
+
+/Fraud_Detection/non-traked
