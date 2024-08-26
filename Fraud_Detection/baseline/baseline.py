@@ -1,61 +1,74 @@
 """
 baseline model for Fraud Detection
 """
+
+# solve problem cannot find module named Fraud_Detection
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+# sys.path.append(str(Path(__file__).resolve().parent.parent.parent.parent))
+
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from Fraud_Detection.data_helper import undersample_data, split_data, grid_search, load_undersampled, preprocess_data
-from Fraud_Detection.data_helper import classifier_cv_score, classifier_cv_predict
-from Fraud_Detection.data_helper import conf_matrix, classifier_report
-from Fraud_Detection.data_helper import test_original_data
-from sklearn.linear_model import LogisticRegression
 
-import imblearn
+from Fraud_Detection.data_helper import load_train, load_val
+from Fraud_Detection.data_helper import make_undersample_data, split_data, preprocess_data
+from Fraud_Detection.tester import classifier_cv_score, classifier_cv_predict
+from Fraud_Detection.tester import test_val_data, get_roc_auc_score
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
 
 
-def logistic_regression(X_train, y_train):
-    """
-    apply Logistic Regression with
-    :param X_train:
-    :param y_train:
-    :return:
-    """
-    classifier = LogisticRegression(solver='liblinear')
-    params = {'penalty': ['l1', 'l2'],
-              'C': [.001, .01, .1, 1, 10, 100]}
-    scoring = 'recall'
+def grid_search(classifier, X_train, y_train, params, **kwargs):
+    grid_model = GridSearchCV(classifier, param_grid=params, **kwargs)
+    grid_model.fit(X_train, y_train)
 
-    classifier_cv = grid_search(classifier, X_train, y_train, params, scoring=scoring)
+    best_estimator = grid_model.best_estimator_
+    best_params = grid_model.best_params_
 
-    return classifier_cv
+    return best_estimator, best_params
+
+
+def random_forest(X_train, y_train, **kwargs):
+    rf_cls = RandomForestClassifier()
+
+    param_grid = {
+        'n_estimators': [100, 200, 300, 400, 800],
+        'max_depth': [3, 5, 7, 10],
+        'max_features': ['sqrt'],
+        'min_samples_leaf': [1, 2, 4]
+    }
+
+    best_estimator, best_params = grid_search(classifier=rf_cls, X_train=X_train, y_train=y_train,
+                                              params=param_grid, **kwargs)
+    print(f'Best Params: {best_params}')
+
+    return best_estimator
 
 
 if __name__ == '__main__':
     print(f'{127803:^20c}')
     print("I miss CODING :(")
-    x = 0
-    # data = pd.DataFrame(pd.read_csv("../data/train.csv"))
 
-    data = load_undersampled()
-    # new_data = undersample_data(data)
-    X = data.drop('Class', axis=1)
-    y = data['Class']
+    data = load_train()
+    u_data = make_undersample_data(data)
+
+    X = u_data.drop('Class', axis=1)
+    y = u_data['Class']
 
     X = preprocess_data(X)
 
-    X_train, X_test, y_train, y_test = split_data(X, y)
-    lr_estims = logistic_regression(X_train, y_train)
+    rf_grid_cv = random_forest(X, y)
 
-    classifier_cv_score(lr_estims, X_train, y_train)
+    classifier_cv_score(rf_grid_cv, X, y)
 
-    # y_pred = classifier_cv_predict(lr_estims, X_train, y_train)
-    y_pred = classifier_cv_predict(lr_estims, X_test, y_test)
+    X_val, y_val = load_val()
 
-    # classifier_report(y_test, y_pred, 'Logistic Regression')
-    # conf_matrix(y_test, y_pred, 'Logistic Regression')
+    test_val_data(rf_grid_cv, X_val, y_val)
 
-    X_original, y_original = data.drop('Class', axis=1), data['Class']
-    test_original_data(lr_estims, X_original, y_original)
+    y_original_pred = classifier_cv_predict(rf_grid_cv, X_val, y_val)
+    get_roc_auc_score(y_val, y_original_pred)
 
     print(f'Fraud Detection works pretty well')
 

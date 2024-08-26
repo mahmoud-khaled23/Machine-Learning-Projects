@@ -1,4 +1,5 @@
 from nyc_taxi_trip_duration.data_manage import *
+from Fraud_Detection.data_helper import *
 
 import numpy as np
 import pandas as pd

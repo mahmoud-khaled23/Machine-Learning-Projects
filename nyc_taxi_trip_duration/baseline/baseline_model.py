@@ -1,9 +1,15 @@
-from nyc_taxi_trip_duration.data_manage import *
-import yaml
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+# solve problem cannot find module named Fraud_Detection
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+
+from nyc_taxi_trip_duration.data_manage import *
+import yaml
 
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import mean_squared_error
@@ -28,7 +34,8 @@ def eval_model(model, X, y):
 
 
 if __name__ == '__main__':
-    with open("../conf/baseline_config.yml", 'r') as file:
+    config_path = '/home/ma7moud-5aled/PycharmProjects/Machine-Learning-Projects/nyc_taxi_trip_duration/conf/baseline_config.yml'
+    with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
 
     # 1- load dataset

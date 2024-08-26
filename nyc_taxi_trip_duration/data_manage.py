@@ -13,7 +13,7 @@ RETURNS ==> train dataset (X), val dataset (y)
 
 
 def load_dataset(root='', path='datasets/split/', train_dataset='train.csv', val_dataset='val.csv'):
-    root = '../'
+    root = '/home/ma7moud-5aled/PycharmProjects/Machine-Learning-Projects/nyc_taxi_trip_duration/'
     X = pd.read_csv(root + path + train_dataset)
     y = pd.read_csv(root + path + val_dataset)
 
